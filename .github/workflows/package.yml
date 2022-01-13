@@ -1,0 +1,59 @@
+name: package
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+         node-version: '14'
+      
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libarchive-tools dpkg-dev
+      - name: Build armhf
+        run: |
+          rm -rf ./unsplash-wallpapers*/
+          export version=$(curl -s https://api.github.com/repos/soroushchehresa/unsplash-wallpapers/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | tr -d 'v')
+          export current=$(cat current.txt)
+          [ "$current" == "$version" ] && exit 0
+          git clone https://github.com/soroushchehresa/unsplash-wallpapers.git
+          cd unsplash-wallpapers && npm install 
+          npx electron-builder --linux deb --armv7l
+          mv dist/*.deb ../
+          cd ../
+          
+      - name: Build arm64
+        run: |
+          rm -rf ./unsplash-wallpapers*/
+          export version=$(curl -s https://api.github.com/repos/soroushchehresa/unsplash-wallpapers/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | tr -d 'v')
+          export current=$(cat current.txt)
+          [ "$current" == "$version" ] && exit 0
+          git clone https://github.com/soroushchehresa/unsplash-wallpapers.git
+          cd unsplash-wallpapers && npm install 
+          npx electron-builder --linux deb --arm64
+          mv dist/*.deb ../
+          cd ../
+
+      - name: Upload
+        run: |
+          rm -rf ./unsplash-wallpapers*/
+          export version=$(curl -s https://api.github.com/repos/soroushchehresa/unsplash-wallpapers/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | tr -d 'v')
+          export current=$(cat current.txt)
+          [ "$current" == "$version" ] && exit 0
+          echo $version > current.txt
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add .
+          git commit -m "Upload unsplash-wallpapers v$(curl -s https://api.github.com/repos/soroushchehresa/unsplash-wallpapers/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")' | tr -d 'v')" 
+          git push
